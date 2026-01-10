@@ -14,42 +14,43 @@ jobs:
       
       - name: Build WebDriverAgentRunner
         run: |
-          xcodebuild archive \
+          xcodebuild build \
             -project WebDriverAgent.xcodeproj \
             -scheme WebDriverAgentRunner \
+            -sdk iphoneos \
             -destination "generic/platform=iOS" \
             -configuration Release \
-            -archivePath wda.xcarchive \
+            -derivedDataPath build \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
-            ARCHS=arm64 \
-            SKIP_INSTALL=NO
+            ARCHS=arm64
 
       - name: Package IPA
         run: |
           mkdir Payload
           
-          # Debug: List archive contents to help diagnose missing files
-          find wda.xcarchive
-          
-          # Dynamically find the .app directory
-          APP_DIR=$(find wda.xcarchive -type d -name "*.app" | head -n 1)
+          # Dynamically find the .app directory in the build output
+          # It usually resides in build/Build/Products/Release-iphoneos/
+          APP_DIR=$(find build -type d -name "WebDriverAgentRunner-Runner.app" | head -n 1)
           
           if [ -z "$APP_DIR" ]; then
-            echo "Error: Could not find .app in wda.xcarchive"
+            echo "Error: Could not find .app in build directory"
+            find build
             exit 1
           fi
           
           echo "Found compiled app at: $APP_DIR"
-          
-          # Debug info
-          echo "Checking binary architecture..."
-          # The binary usually has the same name as the .app without extension
           APP_NAME=$(basename "$APP_DIR" .app)
-          file "$APP_DIR/$APP_NAME"
+          BINARY_PATH="$APP_DIR/$APP_NAME"
           
-          # Remove unnecessary frameworks to fix "Unsupported Mach-O type"
+          # Debug & fix architecture
+          file "$BINARY_PATH"
+          lipo -thin arm64 "$BINARY_PATH" -output "$BINARY_PATH.arm64"
+          mv "$BINARY_PATH.arm64" "$BINARY_PATH"
+          chmod +x "$BINARY_PATH"
+          
+          # Remove unnecessary frameworks
           rm -rf "$APP_DIR/Frameworks/XC"*".framework"
           rm -rf "$APP_DIR/Frameworks/Testing.framework"
           rm -rf "$APP_DIR/Frameworks/libXCTestSwiftSupport.dylib"
