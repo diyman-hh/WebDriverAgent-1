@@ -30,14 +30,14 @@ jobs:
           mkdir Payload
           APP_DIR="build/Build/Products/Release-iphoneos/WebDriverAgentRunner-Runner.app"
           
-          # Remove unnecessary frameworks to fix "Unsupported Mach-O type" and reduce size
-          # This aligns with the official build-real.sh script
+          # Verify architecture
+          echo "Checking binary architecture..."
+          file "$APP_DIR/WebDriverAgentRunner-Runner"
+          
+          # Remove unnecessary frameworks to fix "Unsupported Mach-O type"
           rm -rf "$APP_DIR/Frameworks/XC"*".framework"
           rm -rf "$APP_DIR/Frameworks/Testing.framework"
           rm -rf "$APP_DIR/Frameworks/libXCTestSwiftSupport.dylib"
-          
-          # Perform ad-hoc signing to ensure valid structure for TrollStore
-          codesign -s - --deep --force "$APP_DIR"
           
           cp -r "$APP_DIR" Payload/
           zip -r WebDriverAgentRunner.ipa Payload
