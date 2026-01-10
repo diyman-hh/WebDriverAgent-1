@@ -22,13 +22,24 @@ jobs:
             -derivedDataPath build \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO
-            
+            CODE_SIGNING_ALLOWED=NO \
+            ARCHS=arm64
+
       - name: Package IPA
         run: |
           mkdir Payload
-          # Verify where the app is built. Usually Release-iphoneos with generic destination
-          cp -r build/Build/Products/Release-iphoneos/WebDriverAgentRunner-Runner.app Payload/
+          APP_DIR="build/Build/Products/Release-iphoneos/WebDriverAgentRunner-Runner.app"
+          
+          # Remove unnecessary frameworks to fix "Unsupported Mach-O type" and reduce size
+          # This aligns with the official build-real.sh script
+          rm -rf "$APP_DIR/Frameworks/XC"*".framework"
+          rm -rf "$APP_DIR/Frameworks/Testing.framework"
+          rm -rf "$APP_DIR/Frameworks/libXCTestSwiftSupport.dylib"
+          
+          # Perform ad-hoc signing to ensure valid structure for TrollStore
+          codesign -s - --deep --force "$APP_DIR"
+          
+          cp -r "$APP_DIR" Payload/
           zip -r WebDriverAgentRunner.ipa Payload
 
       - name: Upload IPA
