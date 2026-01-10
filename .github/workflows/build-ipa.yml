@@ -17,6 +17,7 @@ jobs:
           xcodebuild build-for-testing \
             -project WebDriverAgent.xcodeproj \
             -scheme WebDriverAgentRunner \
+            -sdk iphoneos \
             -destination "generic/platform=iOS" \
             -configuration Release \
             -derivedDataPath build \
@@ -29,10 +30,17 @@ jobs:
         run: |
           mkdir Payload
           APP_DIR="build/Build/Products/Release-iphoneos/WebDriverAgentRunner-Runner.app"
+          BINARY_PATH="$APP_DIR/WebDriverAgentRunner-Runner"
           
-          # Verify architecture
-          echo "Checking binary architecture..."
-          file "$APP_DIR/WebDriverAgentRunner-Runner"
+          # Debug info
+          ls -l "$BINARY_PATH"
+          file "$BINARY_PATH"
+          
+          # Force thin binary (Arm64 only) to fix "Unsupported Mach-O type"
+          # This strips any potential x86_64 headers that confuse ldid
+          lipo -thin arm64 "$BINARY_PATH" -output "$BINARY_PATH.arm64"
+          mv "$BINARY_PATH.arm64" "$BINARY_PATH"
+          chmod +x "$BINARY_PATH"
           
           # Remove unnecessary frameworks to fix "Unsupported Mach-O type"
           rm -rf "$APP_DIR/Frameworks/XC"*".framework"
