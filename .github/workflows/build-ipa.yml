@@ -29,11 +29,25 @@ jobs:
       - name: Package IPA
         run: |
           mkdir Payload
-          APP_DIR="wda.xcarchive/Products/Applications/WebDriverAgentRunner-Runner.app"
+          
+          # Debug: List archive contents to help diagnose missing files
+          find wda.xcarchive
+          
+          # Dynamically find the .app directory
+          APP_DIR=$(find wda.xcarchive -type d -name "*.app" | head -n 1)
+          
+          if [ -z "$APP_DIR" ]; then
+            echo "Error: Could not find .app in wda.xcarchive"
+            exit 1
+          fi
+          
+          echo "Found compiled app at: $APP_DIR"
           
           # Debug info
           echo "Checking binary architecture..."
-          file "$APP_DIR/WebDriverAgentRunner-Runner"
+          # The binary usually has the same name as the .app without extension
+          APP_NAME=$(basename "$APP_DIR" .app)
+          file "$APP_DIR/$APP_NAME"
           
           # Remove unnecessary frameworks to fix "Unsupported Mach-O type"
           rm -rf "$APP_DIR/Frameworks/XC"*".framework"
