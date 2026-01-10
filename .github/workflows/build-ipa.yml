@@ -14,33 +14,26 @@ jobs:
       
       - name: Build WebDriverAgentRunner
         run: |
-          xcodebuild build-for-testing \
+          xcodebuild archive \
             -project WebDriverAgent.xcodeproj \
             -scheme WebDriverAgentRunner \
-            -sdk iphoneos \
             -destination "generic/platform=iOS" \
             -configuration Release \
-            -derivedDataPath build \
+            -archivePath wda.xcarchive \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
-            ARCHS=arm64
+            ARCHS=arm64 \
+            SKIP_INSTALL=NO
 
       - name: Package IPA
         run: |
           mkdir Payload
-          APP_DIR="build/Build/Products/Release-iphoneos/WebDriverAgentRunner-Runner.app"
-          BINARY_PATH="$APP_DIR/WebDriverAgentRunner-Runner"
+          APP_DIR="wda.xcarchive/Products/Applications/WebDriverAgentRunner-Runner.app"
           
           # Debug info
-          ls -l "$BINARY_PATH"
-          file "$BINARY_PATH"
-          
-          # Force thin binary (Arm64 only) to fix "Unsupported Mach-O type"
-          # This strips any potential x86_64 headers that confuse ldid
-          lipo -thin arm64 "$BINARY_PATH" -output "$BINARY_PATH.arm64"
-          mv "$BINARY_PATH.arm64" "$BINARY_PATH"
-          chmod +x "$BINARY_PATH"
+          echo "Checking binary architecture..."
+          file "$APP_DIR/WebDriverAgentRunner-Runner"
           
           # Remove unnecessary frameworks to fix "Unsupported Mach-O type"
           rm -rf "$APP_DIR/Frameworks/XC"*".framework"
