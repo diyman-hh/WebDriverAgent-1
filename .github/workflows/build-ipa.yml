@@ -81,6 +81,38 @@ jobs:
           
           # (Previously removed frameworks here. Now keeping them to fix DYLD missing error)
           
+          # ... (previous framework processing) ...
+          
+          # 4. Ad-Hoc Sign Everything (Crucial for AiSi Helper to recognize structure)
+          echo "Creating dummy entitlements..."
+          cat <<EOF > entitlements.plist
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>get-task-allow</key>
+              <true/>
+          </dict>
+          </plist>
+          EOF
+          
+          echo "Ad-hoc signing binaries..."
+          # Sign Frameworks
+          find "$APP_DIR/Frameworks" -type f -name "*.dylib" -o -name "*.framework" | while read fw; do
+              codesign -s - -f --preserve-metadata=identifier,entitlements "$fw"
+          done
+          
+          # Sign PlugIns
+          find "$APP_DIR/PlugIns" -type d -name "*.xctest" | while read pl; do
+              codesign -s - -f --preserve-metadata=identifier,entitlements "$pl"
+          done
+          
+          # Sign Main App
+          codesign -s - -f --entitlements entitlements.plist "$APP_DIR"
+          
+          echo "Verifying Info.plist..."
+          plutil -p "$APP_DIR/Info.plist"
+          
           cp -r "$APP_DIR" Payload/
           zip -r WebDriverAgentRunner.ipa Payload
 
