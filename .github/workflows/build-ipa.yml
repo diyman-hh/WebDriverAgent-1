@@ -73,10 +73,13 @@ jobs:
                process_binary "$fw_bin"
           done
           
-          # Remove known problematic frameworks explicitly just in case
-          rm -rf "$APP_DIR/Frameworks/XC"*".framework"
-          rm -rf "$APP_DIR/Frameworks/Testing.framework"
-          rm -rf "$APP_DIR/Frameworks/libXCTestSwiftSupport.dylib"
+          # Remove problematic frameworks ONLY if they are definitely unused or causing issues.
+          # For standard signing (AiSi), we should keep most structure intact.
+          # removing Testing.framework is usually safe, but let's be conservative.
+          # We Will ONLY remove the one known to cause "Unsupported Mach-O" if it's strictly trash,
+          # but for now, let's restore a CLEAN build.
+          
+          # (Previously removed frameworks here. Now keeping them to fix DYLD missing error)
           
           cp -r "$APP_DIR" Payload/
           zip -r WebDriverAgentRunner.ipa Payload
