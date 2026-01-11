@@ -58,57 +58,24 @@ jobs:
               fi
           }
           
-          # 1. Process Main Binary
-          APP_NAME=$(basename "$APP_DIR" .app)
-          process_binary "$APP_DIR/$APP_NAME"
+          # 4. Simple Ad-Hoc Sign (Avoid fake entitlements)
+          # AiSi Helper often flags IPAs with "get-task-allow" as "Jailbreak/Dev" if checks fail.
+          # We just generic sign to ensure binary validity.
           
-          # 2. Process PlugIns (CRITICAL: The internal xctest bundle)
-          find "$APP_DIR/PlugIns" -type d -name "*.xctest" | while read xctest_bundle; do
-              xctest_name=$(basename "$xctest_bundle" .xctest)
-              process_binary "$xctest_bundle/$xctest_name"
-          done
+          echo "Ad-hoc signing binaries (No specific entitlements)..."
           
-          # 3. Process Frameworks (if any remain)
-          find "$APP_DIR/Frameworks" -type f ! -name "*.plist" ! -name "*.strings" ! -name "*.png" | while read fw_bin; do
-               process_binary "$fw_bin"
-          done
-          
-          # Remove problematic frameworks ONLY if they are definitely unused or causing issues.
-          # For standard signing (AiSi), we should keep most structure intact.
-          # removing Testing.framework is usually safe, but let's be conservative.
-          # We Will ONLY remove the one known to cause "Unsupported Mach-O" if it's strictly trash,
-          # but for now, let's restore a CLEAN build.
-          
-          # (Previously removed frameworks here. Now keeping them to fix DYLD missing error)
-          
-          # ... (previous framework processing) ...
-          
-          # 4. Ad-Hoc Sign Everything (Crucial for AiSi Helper to recognize structure)
-          echo "Creating dummy entitlements..."
-          cat <<EOF > entitlements.plist
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-              <key>get-task-allow</key>
-              <true/>
-          </dict>
-          </plist>
-          EOF
-          
-          echo "Ad-hoc signing binaries..."
           # Sign Frameworks
           find "$APP_DIR/Frameworks" -type f -name "*.dylib" -o -name "*.framework" | while read fw; do
-              codesign -s - -f --preserve-metadata=identifier,entitlements "$fw"
+              codesign -s - -f --preserve-metadata=identifier,flags "$fw"
           done
           
           # Sign PlugIns
           find "$APP_DIR/PlugIns" -type d -name "*.xctest" | while read pl; do
-              codesign -s - -f --preserve-metadata=identifier,entitlements "$pl"
+              codesign -s - -f --preserve-metadata=identifier,flags "$pl"
           done
           
           # Sign Main App
-          codesign -s - -f --entitlements entitlements.plist "$APP_DIR"
+          codesign -s - -f --preserve-metadata=identifier,flags "$APP_DIR"
           
           echo "Verifying Info.plist..."
           plutil -p "$APP_DIR/Info.plist"
