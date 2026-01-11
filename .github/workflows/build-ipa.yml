@@ -58,7 +58,14 @@ jobs:
               fi
           }
           
-          # 4. Simple Ad-Hoc Sign (Avoid fake entitlements)
+          # 4. Inject Dummy embedded.mobileprovision (CRITICAL for AiSi Helper)
+          # AiSi Helper flags apps without this file as "Jailbreak Version".
+          # We download a generic sample profile to satisfy the structure check.
+          # AiSi will replace this with a real one during re-signing.
+          echo "Downloading dummy embedded.mobileprovision..."
+          curl -L -o "$APP_DIR/embedded.mobileprovision" "https://gist.githubusercontent.com/ben-xD/2eeb11f0eb916977692bb10a6550b94d/raw/embedded.mobileprovision"
+
+          # 5. Simple Ad-Hoc Sign (Avoid fake entitlements)
           # AiSi Helper often flags IPAs with "get-task-allow" as "Jailbreak/Dev" if checks fail.
           # We just generic sign to ensure binary validity.
           
