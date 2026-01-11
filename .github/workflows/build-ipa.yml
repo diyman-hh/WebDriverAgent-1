@@ -31,7 +31,6 @@ jobs:
           mkdir Payload
           
           # Dynamically find the .app directory in the build output
-          # It usually resides in build/Build/Products/Release-iphoneos/
           APP_DIR=$(find build -type d -name "WebDriverAgentRunner-Runner.app" | head -n 1)
           
           if [ -z "$APP_DIR" ]; then
@@ -41,16 +40,38 @@ jobs:
           fi
           
           echo "Found compiled app at: $APP_DIR"
+          
+          # Function to process binaries: check architecture and force arm64
+          process_binary() {
+              local bin="$1"
+              if [ ! -f "$bin" ]; then return; fi
+              
+              echo "Processing binary: $bin"
+              # Check if it is a binary (Mach-O)
+              if file "$bin" | grep -q "Mach-O"; then
+                  # Always force thin to arm64 to be safe (strips any x86_64 or other archs)
+                  echo "  -> Thinning to arm64"
+                  lipo -thin arm64 "$bin" -output "$bin.arm64" 2>/dev/null && mv "$bin.arm64" "$bin" || echo "  -> Lipo failed or already thin"
+                  chmod +x "$bin"
+              fi
+          }
+          
+          # 1. Process Main Binary
           APP_NAME=$(basename "$APP_DIR" .app)
-          BINARY_PATH="$APP_DIR/$APP_NAME"
+          process_binary "$APP_DIR/$APP_NAME"
           
-          # Debug & fix architecture
-          file "$BINARY_PATH"
-          lipo -thin arm64 "$BINARY_PATH" -output "$BINARY_PATH.arm64"
-          mv "$BINARY_PATH.arm64" "$BINARY_PATH"
-          chmod +x "$BINARY_PATH"
+          # 2. Process PlugIns (CRITICAL: The internal xctest bundle)
+          find "$APP_DIR/PlugIns" -type d -name "*.xctest" | while read xctest_bundle; do
+              xctest_name=$(basename "$xctest_bundle" .xctest)
+              process_binary "$xctest_bundle/$xctest_name"
+          done
           
-          # Remove unnecessary frameworks
+          # 3. Process Frameworks (if any remain)
+          find "$APP_DIR/Frameworks" -type f ! -name "*.plist" ! -name "*.strings" ! -name "*.png" | while read fw_bin; do
+               process_binary "$fw_bin"
+          done
+          
+          # Remove known problematic frameworks explicitly just in case
           rm -rf "$APP_DIR/Frameworks/XC"*".framework"
           rm -rf "$APP_DIR/Frameworks/Testing.framework"
           rm -rf "$APP_DIR/Frameworks/libXCTestSwiftSupport.dylib"
