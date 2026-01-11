@@ -14,16 +14,14 @@ jobs:
       
       - name: Build WebDriverAgentRunner
         run: |
-          xcodebuild build \
+          xcodebuild archive \
             -project WebDriverAgent.xcodeproj \
             -scheme WebDriverAgentRunner \
             -sdk iphoneos \
-            -destination "generic/platform=iOS" \
             -configuration Release \
-            -derivedDataPath build \
-            CODE_SIGN_IDENTITY="" \
+            -archivePath wda.xcarchive \
+            CODE_SIGN_IDENTITY="-" \
             CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO \
             IPHONEOS_DEPLOYMENT_TARGET=15.0 \
             OTHER_LDFLAGS="-Wl,-no_fixup_chains" \
             ARCHS=arm64
@@ -32,12 +30,12 @@ jobs:
         run: |
           mkdir Payload
           
-          # Dynamically find the .app directory in the build output
-          APP_DIR=$(find build -type d -name "WebDriverAgentRunner-Runner.app" | head -n 1)
+          # Find app in archive
+          APP_DIR="wda.xcarchive/Products/Applications/WebDriverAgentRunner-Runner.app"
           
-          if [ -z "$APP_DIR" ]; then
-            echo "Error: Could not find .app in build directory"
-            find build
+          if [ ! -d "$APP_DIR" ]; then
+            echo "Error: App not found at $APP_DIR"
+            find wda.xcarchive
             exit 1
           fi
           
