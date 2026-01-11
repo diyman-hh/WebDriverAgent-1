@@ -58,7 +58,12 @@ jobs:
               fi
           }
           
-          # 4. Inject Dummy embedded.mobileprovision (CRITICAL for AiSi Helper)
+          # 4. Remove dSYM debug symbols (CRITICAL - causes installation failure)
+          # dSYM bundles contain unsigned metadata that iOS rejects
+          echo "Removing .dSYM debug symbol bundles..."
+          find "$APP_DIR" -name "*.dSYM" -type d -exec rm -rf {} + 2>/dev/null || true
+          
+          # 5. Inject Dummy embedded.mobileprovision (CRITICAL for AiSi Helper)
           # AiSi Helper flags apps without this file as "Jailbreak Version".
           # We download a generic sample profile to satisfy the structure check.
           # AiSi will replace this with a real one during re-signing.
