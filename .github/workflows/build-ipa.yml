@@ -58,12 +58,22 @@ jobs:
               fi
           }
           
-          # 4. Ensure main App has correct CFBundlePackageType (APPL)
-          # Xcode generates this but we verify/force it to be safe
-          echo "Verifying CFBundlePackageType is APPL..."
+          # 4. Enforce Strict Bundle ID and Type Structure (Match EasyClick)
+          # Host App: com.facebook.WebDriverAgentRunner.xctrunner (APPL)
+          # PlugIn:   com.facebook.WebDriverAgentRunner (BNDL)
+          # This ensures the PlugIn ID is a generic prefix, allowing AiSi to sign the Host App with a specific ID.
+          
+          echo "Enforcing Main App Bundle ID & Type..."
+          /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier com.facebook.WebDriverAgentRunner.xctrunner" "$APP_DIR/Info.plist"
           /usr/libexec/PlistBuddy -c "Set :CFBundlePackageType APPL" "$APP_DIR/Info.plist" 2>/dev/null || \
           /usr/libexec/PlistBuddy -c "Add :CFBundlePackageType string APPL" "$APP_DIR/Info.plist"
-          
+
+          echo "Enforcing xctest Plugin Bundle ID & Type..."
+          PLUGIN_INFO="$APP_DIR/PlugIns/WebDriverAgentRunner.xctest/Info.plist"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier com.facebook.WebDriverAgentRunner" "$PLUGIN_INFO"
+          /usr/libexec/PlistBuddy -c "Set :CFBundlePackageType BNDL" "$PLUGIN_INFO" 2>/dev/null || \
+          /usr/libexec/PlistBuddy -c "Add :CFBundlePackageType string BNDL" "$PLUGIN_INFO"
+
           # 5. Remove dSYM debug symbols (CRITICAL - causes installation failure)
           # dSYM bundles contain unsigned metadata that iOS rejects
           echo "Removing .dSYM debug symbol bundles..."
