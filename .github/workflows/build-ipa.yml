@@ -92,14 +92,17 @@ jobs:
           echo "Retargeting binary dependencies to Developer DDI..."
           BINARY="$APP_DIR/WebDriverAgentRunner-Runner"
           
-          otool -L "$BINARY"
+          # 5. Add DDI to Runpath (Cleaner DDI Linkage)
+          # Instead of hardcoding paths, we add /Developer to the search path
           
-          # Point to /Developer (DDI) paths
-          # This tells the app to use the system libraries instead of looking inside itself
-          install_name_tool -change "@rpath/XCTest.framework/XCTest" "/Developer/Library/Frameworks/XCTest.framework/XCTest" "$BINARY" || true
-          install_name_tool -change "@rpath/XCTAutomationSupport.framework/XCTAutomationSupport" "/Developer/Library/PrivateFrameworks/XCTAutomationSupport.framework/XCTAutomationSupport" "$BINARY" || true
-          install_name_tool -change "@rpath/XCUIAutomation.framework/XCUIAutomation" "/Developer/Library/PrivateFrameworks/XCUIAutomation.framework/XCUIAutomation" "$BINARY" || true
-          install_name_tool -change "@rpath/XCTestCore.framework/XCTestCore" "/Developer/Library/PrivateFrameworks/XCTestCore.framework/XCTestCore" "$BINARY" || true
+          install_name_tool -add_rpath "/Developer/Library/Frameworks" "$BINARY" 2>/dev/null || true
+          install_name_tool -add_rpath "/Developer/Library/PrivateFrameworks" "$BINARY" 2>/dev/null || true
+          
+          # Verify changes
+          echo "New RPATHs:"
+          otool -l "$BINARY" | grep -A2 LC_RPATH
+          
+          echo "Dependencies:"
           
           # Verify changes
           echo "New dependencies:"
