@@ -53,3 +53,5 @@ WebDriverAgentRunner-Runner.app/
 
 # Ruby
 Gemfile.lock
+
+ipa/
