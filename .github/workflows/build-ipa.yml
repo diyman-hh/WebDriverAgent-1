@@ -74,29 +74,25 @@ jobs:
           /usr/libexec/PlistBuddy -c "Set :CFBundlePackageType BNDL" "$PLUGIN_INFO" 2>/dev/null || \
           /usr/libexec/PlistBuddy -c "Add :CFBundlePackageType string BNDL" "$PLUGIN_INFO"
 
-          # 5. Remove System XCTest Frameworks (Match EasyClick)
-          # We should NOT bundle system frameworks like XCTest.framework. 
-          # EasyClick only contains WebDriverAgentLib.framework and libXCTestSwiftSupport.dylib.
-          # Bundling system frameworks causes signature conflicts (0xe8008001).
+          # 5. Bundle Private XCTest Frameworks (Crucial for Standalone Running)
+          # We need these enabled because the app crashes without them (missing dependencies).
+          # Now that we removed the dummy profile, AiSi should sign these correctly.
           
-          echo "Stripping system XCTest frameworks..."
+          echo "Bundling XCTest frameworks..."
           FRAMEWORKS_DIR="$APP_DIR/Frameworks"
-          PLUGIN_FW_DIR="$APP_DIR/PlugIns/WebDriverAgentRunner.xctest/Frameworks"
+          mkdir -p "$FRAMEWORKS_DIR"
           
-          # Remove from Main App Frameworks
-          rm -rf "$FRAMEWORKS_DIR/XCTest.framework"
-          rm -rf "$FRAMEWORKS_DIR/Testing.framework"
-          rm -rf "$FRAMEWORKS_DIR/XCTAutomationSupport.framework"
-          rm -rf "$FRAMEWORKS_DIR/XCTestCore.framework"
-          rm -rf "$FRAMEWORKS_DIR/XCUIAutomation.framework"
-          rm -rf "$FRAMEWORKS_DIR/XCUnit.framework"
+          # Source paths (macos-latest Xcode 15/16 structure)
+          PLATFORM_DEV="/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer"
+          LIB_FW="$PLATFORM_DEV/Library/Frameworks"
+          PVT_FW="$PLATFORM_DEV/Library/PrivateFrameworks"
           
-          # Remove from Plugin Frameworks (if present)
-          rm -rf "$PLUGIN_FW_DIR/XCTest.framework"
-          rm -rf "$PLUGIN_FW_DIR/Testing.framework"
+          cp -R "$LIB_FW/XCTest.framework" "$FRAMEWORKS_DIR/" || echo "Warning: XCTest.framework not found"
+          cp -R "$LIB_FW/Testing.framework" "$FRAMEWORKS_DIR/" 2>/dev/null || true
           
-          echo "Frameworks remaining in Main App:"
-          ls "$FRAMEWORKS_DIR" || echo "None"
+          cp -R "$PVT_FW/XCTAutomationSupport.framework" "$FRAMEWORKS_DIR/" || echo "Warning: XCTAutomationSupport not found"
+          cp -R "$PVT_FW/XCTestCore.framework" "$FRAMEWORKS_DIR/" || true
+          cp -R "$PVT_FW/XCUIAutomation.framework" "$FRAMEWORKS_DIR/" || true
           
           # 6. Remove dSYM debug symbols (CRITICAL - causes installation failure)
           # dSYM bundles contain unsigned metadata that iOS rejects
