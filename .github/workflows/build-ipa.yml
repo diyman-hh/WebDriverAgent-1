@@ -74,9 +74,9 @@ jobs:
           /usr/libexec/PlistBuddy -c "Set :CFBundlePackageType BNDL" "$PLUGIN_INFO" 2>/dev/null || \
           /usr/libexec/PlistBuddy -c "Add :CFBundlePackageType string BNDL" "$PLUGIN_INFO"
 
-          # 5. Link against System XCTest (The "Magic" Step)
-          # We CANNOT bundle XCTest (install error), but we crash without it.
-          # Solution: Point the binary to the On-Device System Frameworks.
+          # 5. Link against Developer XCTest (Requires DDI Mount)
+          # We cannot bundle XCTest (signature error), so we use the one in Developer Disk Image.
+          # The User MUST mount the DDI for this to work.
           
           echo "Stripping bundled XCTest frameworks..."
           FRAMEWORKS_DIR="$APP_DIR/Frameworks"
@@ -87,21 +87,19 @@ jobs:
           rm -rf "$FRAMEWORKS_DIR/XCTAutomationSupport.framework"
           rm -rf "$FRAMEWORKS_DIR/XCTestCore.framework"
           rm -rf "$FRAMEWORKS_DIR/XCUIAutomation.framework"
-          
-          # Remove from Plugin too
           rm -rf "$PLUGIN_FW_DIR/XCTest.framework"
           
-          echo "Retargeting binary dependencies to System..."
+          echo "Retargeting binary dependencies to Developer DDI..."
           BINARY="$APP_DIR/WebDriverAgentRunner-Runner"
           
-          # Show current links for debugging log
           otool -L "$BINARY"
           
-          # Change dependency paths from @rpath (local) to /System (device)
-          # Note: Actual paths might vary by Xcode version, trying common variants
-          
-          install_name_tool -change "@rpath/XCTest.framework/XCTest" "/System/Library/Frameworks/XCTest.framework/XCTest" "$BINARY" || true
-          install_name_tool -change "@rpath/XCTAutomationSupport.framework/XCTAutomationSupport" "/System/Library/PrivateFrameworks/XCTAutomationSupport.framework/XCTAutomationSupport" "$BINARY" || true
+          # Point to /Developer (DDI) paths
+          # This tells the app to use the system libraries instead of looking inside itself
+          install_name_tool -change "@rpath/XCTest.framework/XCTest" "/Developer/Library/Frameworks/XCTest.framework/XCTest" "$BINARY" || true
+          install_name_tool -change "@rpath/XCTAutomationSupport.framework/XCTAutomationSupport" "/Developer/Library/PrivateFrameworks/XCTAutomationSupport.framework/XCTAutomationSupport" "$BINARY" || true
+          install_name_tool -change "@rpath/XCUIAutomation.framework/XCUIAutomation" "/Developer/Library/PrivateFrameworks/XCUIAutomation.framework/XCUIAutomation" "$BINARY" || true
+          install_name_tool -change "@rpath/XCTestCore.framework/XCTestCore" "/Developer/Library/PrivateFrameworks/XCTestCore.framework/XCTestCore" "$BINARY" || true
           
           # Verify changes
           echo "New dependencies:"
