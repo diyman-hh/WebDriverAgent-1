@@ -58,7 +58,13 @@ jobs:
               fi
           }
           
-          # 4. Remove dSYM debug symbols (CRITICAL - causes installation failure)
+          # 4. Ensure main App has correct CFBundlePackageType (APPL)
+          # Xcode generates this but we verify/force it to be safe
+          echo "Verifying CFBundlePackageType is APPL..."
+          /usr/libexec/PlistBuddy -c "Set :CFBundlePackageType APPL" "$APP_DIR/Info.plist" 2>/dev/null || \
+          /usr/libexec/PlistBuddy -c "Add :CFBundlePackageType string APPL" "$APP_DIR/Info.plist"
+          
+          # 5. Remove dSYM debug symbols (CRITICAL - causes installation failure)
           # dSYM bundles contain unsigned metadata that iOS rejects
           echo "Removing .dSYM debug symbol bundles..."
           find "$APP_DIR" -name "*.dSYM" -type d -exec rm -rf {} + 2>/dev/null || true
