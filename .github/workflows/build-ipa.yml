@@ -74,7 +74,33 @@ jobs:
           /usr/libexec/PlistBuddy -c "Set :CFBundlePackageType BNDL" "$PLUGIN_INFO" 2>/dev/null || \
           /usr/libexec/PlistBuddy -c "Add :CFBundlePackageType string BNDL" "$PLUGIN_INFO"
 
-          # 5. Remove dSYM debug symbols (CRITICAL - causes installation failure)
+          # 5. Bundle Private XCTest Frameworks (Crucial for Standalone Running)
+          # EasyClick includes these, which allows it to run without system injection
+          echo "Bundling XCTest frameworks..."
+          FRAMEWORKS_DIR="$APP_DIR/Frameworks"
+          mkdir -p "$FRAMEWORKS_DIR"
+          
+          # Source paths (macos-latest Xcode 15/16 structure)
+          PLATFORM_DEV="/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer"
+          LIB_FW="$PLATFORM_DEV/Library/Frameworks"
+          PVT_FW="$PLATFORM_DEV/Library/PrivateFrameworks"
+          
+          # List of frameworks to copy
+          # XCTest is in Library/Frameworks
+          # Others like XCTAutomationSupport might be in PrivateFrameworks
+          
+          cp -R "$LIB_FW/XCTest.framework" "$FRAMEWORKS_DIR/" || echo "Warning: XCTest.framework not found"
+          cp -R "$LIB_FW/Testing.framework" "$FRAMEWORKS_DIR/" 2>/dev/null || true
+          
+          # Copy Private Frameworks if they exist
+          cp -R "$PVT_FW/XCTAutomationSupport.framework" "$FRAMEWORKS_DIR/" || echo "Warning: XCTAutomationSupport not found"
+          cp -R "$PVT_FW/XCTestCore.framework" "$FRAMEWORKS_DIR/" || true
+          cp -R "$PVT_FW/XCUIAutomation.framework" "$FRAMEWORKS_DIR/" || true
+          
+          # Some might be in different spots depending on Xcode version, try finding them if copy failed
+          # But for now hardcoded paths covering most common locations
+          
+          # 6. Remove dSYM debug symbols (CRITICAL - causes installation failure)
           # dSYM bundles contain unsigned metadata that iOS rejects
           echo "Removing .dSYM debug symbol bundles..."
           find "$APP_DIR" -name "*.dSYM" -type d -exec rm -rf {} + 2>/dev/null || true
